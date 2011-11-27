@@ -17,8 +17,8 @@ class Perg(object):
 			for path in self.paths:
 				yield (path, open(path, 'r'), 'general')
 
-	def getStrings(self, f, syntax_name):
-		"""Given a file object and a syntax name, attempt to yield all the string literals."""
+	def getRegexes(self, f, syntax_name):
+		"""Given a file object and a syntax name, attempt to yield all the regexes."""
 		parser = getattr(__import__('perg.syntaxes.%s' % syntax_name).perg.syntaxes, syntax_name)
 		return parser.parse(f)
 
@@ -34,7 +34,6 @@ class Perg(object):
 
 	def run(self):
 		for (filename, f, syntax) in self.findFiles():
-			for (lineno, column, regex, literal) in self.getStrings(f, syntax):
+			for (lineno, column, regex, literal) in self.getRegexes(f, syntax):
 				if self.checkMatch(regex):
 					self.printMatch(filename, lineno, column, literal)
-
