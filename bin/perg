@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from perg import perg
-import sys
-
-if __name__ == "__main__":
-	perg.Perg(*sys.argv[1:]).run()

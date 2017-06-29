@@ -1,12 +1,12 @@
 import sys
 import re
-import syntaxes
+
 
 class Perg(object):
-	def __init__(self, *args):
+	def __init__(self, text, *paths):
 		#TODO optparse
-		self.text = args[0]
-		self.paths = args[1:]
+		self.text = text
+		self.paths = paths
 
 	def findFiles(self):
 		"""Find all the filenames described by self.paths, open them, and yield them and the syntax associated with them"""
@@ -15,7 +15,11 @@ class Perg(object):
 			yield ('<stdin>', sys.stdin, 'general')
 		else:
 			for path in self.paths:
-				yield (path, open(path, 'r'), 'general')
+				if path.endswith('.py'):
+					syntax = 'python2'
+				else:
+					syntax = 'general'
+				yield (path, open(path, 'r'), syntax)
 
 	def getRegexes(self, f, syntax_name):
 		"""Given a file object and a syntax name, attempt to yield all the regexes."""
@@ -37,3 +41,7 @@ class Perg(object):
 			for (lineno, column, regex, literal) in self.getRegexes(f, syntax):
 				if self.checkMatch(regex):
 					self.printMatch(filename, lineno, column, literal)
+
+
+if __name__ == "__main__":
+	Perg(*sys.argv[1:]).run()
