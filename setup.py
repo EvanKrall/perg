@@ -8,5 +8,6 @@ setup(
     description='Search code for patterns that match a given string',
     author='Evan Krall',
     author_email='evan@evankrall.com',
-    packages=find_packages(exclude=["tests"])
+    packages=find_packages(),
+    scripts=['perg/perg.py']
 )

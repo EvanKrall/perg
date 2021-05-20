@@ -1,1 +1,3 @@
 **/*.pyc
+.tox/
+perg.egg-info
