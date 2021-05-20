@@ -1,7 +1,8 @@
 import ast
 import re
 import string
-from perg.common_checkers import check_match_re
+from perg.common_checkers import check_match_re_simple
+from perg.common_checkers import ALL_COMMON
 
 
 def check_match_format_str(pattern, s, partial=False):
@@ -11,7 +12,7 @@ def check_match_format_str(pattern, s, partial=False):
         if field_name is not None:
             regex += '.*'
 
-    return check_match_re(regex, s, partial=partial)
+    return check_match_re_simple(regex, s, partial=partial)
 
 
 class StringFinder(ast.NodeVisitor):
@@ -51,5 +52,5 @@ def parse(f, filename):
             node.end_lineno,
             node.end_col_offset,
             value,
-            [check_match_re, check_match_format_str],
+            ALL_COMMON + [check_match_format_str],
         )

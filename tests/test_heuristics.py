@@ -1,4 +1,4 @@
-from perg.perg import pattern_is_trivial
+from perg.heuristics import pattern_is_trivial
 from perg.common_checkers import check_match_re_simple
 
 def test_pattern_is_trivial():

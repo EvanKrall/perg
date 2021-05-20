@@ -1,10 +1,9 @@
 import re
-import itertools
 import fnmatch
-from functools import reduce
 
 
 ALL_COMMON = []
+RE_FLAGS = re.MULTILINE | re.DOTALL
 
 
 def common_checker(check_fn):
@@ -12,24 +11,14 @@ def common_checker(check_fn):
     return check_fn
 
 
+
 @common_checker
-def check_match_re(pattern, s, partial=False, ignore_case=False):
-    flag_combos = [
-        [re.MULTILINE],
-        [re.DOTALL],
-        [re.VERBOSE, 0],
-    ]
-    if ignore_case:
-        flag_combos.append([re.IGNORE_CASE])
-
-    for flag_combo in itertools.product(*flag_combos):
-        flags = reduce(lambda a, b: a | b, flag_combo)
-        if check_match_re_simple(pattern, s, partial=partial, flags=flags):
-            return True
-    return False
+def check_match_re_verbose(pattern, s, partial=False):
+    return check_match_re_simple(pattern, s, partial=partial, flags=RE_FLAGS | re.VERBOSE)
 
 
-def check_match_re_simple(pattern, s, partial=False, flags=0):
+@common_checker
+def check_match_re_simple(pattern, s, partial=False, flags=RE_FLAGS):
     try:
         compiled = re.compile(pattern, flags)
     except re.error:

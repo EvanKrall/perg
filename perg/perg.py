@@ -3,8 +3,10 @@ import os.path
 import os
 import pkgutil
 import importlib
-import perg.syntaxes
+from collections import defaultdict
 
+import perg.syntaxes
+from perg import heuristics
 
 def find_files(paths, ignore_dot=True):
     """Find all the filenames described by self.paths, open them, and yield them and the syntax associated with them"""
@@ -34,6 +36,26 @@ def parse_args():
         help="Ignore patterns that match every string.",
         default=True,
     )
+    parser.add_argument(
+        '--min-undeletable',
+        type=int,
+        default=0,
+        help="If enabled, this heuristic will check the pattern against versions of your string with single characters"
+             " deleted. If too many characters are deletable with the pattern still matching, the pattern is ignored."
+    )
+    parser.add_argument(
+        '--max-deletable',
+        type=int,
+        default=-1,
+        help="If enabled, this heuristic will check the pattern against versions of your string with single characters"
+             " deleted. If too many characters are deletable with the pattern still matching, the pattern is ignored."
+    )
+    parser.add_argument(
+        '--print-checker-names',
+        action=argparse.BooleanOptionalAction,
+        help="Print the names of all the checkers that matched the pattern to the string after each match.",
+        default=False,
+    )
 
     return parser.parse_args()
 
@@ -49,7 +71,9 @@ def print_match(
     start_col,
     end_lineno,
     end_col,
+    checker_names,
     lines,
+    args,
 ):
     prefix = f"{filename}:{start_lineno}: "
     for lineno in range(start_lineno, end_lineno+1):
@@ -68,21 +92,31 @@ def print_match(
         after = line[highlight_end:]
 
         red = '\u001b[31m'
-        endred = '\u001b[0m'
+        reset = '\u001b[0m'
 
         if lineno != start_lineno:
             prefix = " " * len(prefix)
-        print(f"{prefix} {before}{red}{match}{endred}{after}")
+        print(f"{prefix} {before}{red}{match}{reset}{after}")
 
+    if args.print_checker_names:
+        boldblack = '\u001b[30;1m'
+        print(f"{boldblack}({', '.join(checker_names)}){reset}\n")
 
-def pattern_is_trivial(check_fn, pattern):
-    """This tests a pattern against the empty string and each of the first 255 characters except newline. If all of
-    them match, the pattern is considered trivial. Example patterns that would match this:
-        .*
-        .?
-    """
-    test_strings = [''] + [chr(c) for c in range(1, 255) if chr(c) != '\n']
-    return all([check_fn(pattern, ts) for ts in test_strings])
+def passes_heuristics(check_fn, pattern, s, args):
+    if args.ignore_trivial_match and heuristics.pattern_is_trivial(check_fn, pattern):
+        return False
+
+    if args.max_deletable != -1 or args.min_undeletable > 0:
+        if heuristics.too_many_things_deletable(
+            check_fn,
+            pattern,
+            s,
+            max_deletable=args.max_deletable,
+            min_undeletable=args.min_undeletable,
+        ):
+            return False
+
+    return True
 
 
 def main():
@@ -90,7 +124,7 @@ def main():
 
     syntaxes = list(find_syntaxes())
     for filename in find_files(args.paths):
-        matches = set()
+        matches = defaultdict(set)
 
         for syntax in syntaxes:
             try:
@@ -103,11 +137,11 @@ def main():
                 for (start_lineno, start_col, end_lineno, end_col, pattern, check_fns) in syntax.parse(f, filename):
                     for check_fn in check_fns:
                         if check_fn(pattern, args.text):
-                            if not (args.ignore_trivial_match and pattern_is_trivial(check_fn, pattern)):
-                                matches.add((filename, start_lineno, start_col, end_lineno, end_col))
+                            if passes_heuristics(check_fn, pattern, args.text, args):
+                                matches[(filename, start_lineno, start_col, end_lineno, end_col)].add(check_fn.__name__)
 
-        for match in sorted(matches):
-            print_match(*match, lines)
+        for match, checkers in sorted(matches.items()):
+            print_match(*match, checkers, lines, args)
 
 if __name__ == "__main__":
     main()
