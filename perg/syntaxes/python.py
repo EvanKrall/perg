@@ -1,13 +1,7 @@
 import ast
 import re
 import string
-
-
-def check_match_re(pattern, s, partial=False):
-    if partial:
-        return bool(re.search(pattern, s))
-    else:
-        return bool(re.fullmatch(pattern, s))
+from perg.common_checkers import check_match_re
 
 
 def check_match_format_str(pattern, s, partial=False):
@@ -19,8 +13,6 @@ def check_match_format_str(pattern, s, partial=False):
 
     return check_match_re(regex, s, partial=partial)
 
-
-ALL_PYTHON_CHECKERS = [check_match_re, check_match_format_str]
 
 class StringFinder(ast.NodeVisitor):
     def __init__(self, found_nodes):
@@ -34,28 +26,30 @@ class StringFinder(ast.NodeVisitor):
             self.found_nodes.append(node)
 
 
-def parse(f):
+def parse(f, filename):
     source = f.read()
-    lines = source.split('\n')
-    tree = ast.parse(''.join(source))
+    try:
+        tree = ast.parse(''.join(source))
+    except (SyntaxError, UnicodeDecodeError):
+        return
 
     found_nodes = []
     string_finder = StringFinder(found_nodes)
     string_finder.visit(tree)
 
     for node in found_nodes:
-        literal_lines = lines[node.lineno - 1 : node.end_lineno]
-        # trim the last line first in case this is a single-line. If we did this in the opposite order, trimming
-        # the beginning of the line would shift the end forward.
-        literal_lines[-1] = literal_lines[-1][:node.end_col_offset]
-        literal_lines[0] = literal_lines[0][node.col_offset:]
-        literal = '\n'.join(literal_lines)
-
         if isinstance(node, ast.JoinedStr):
             # A bit hacky, but it works lol. This strips the f off the beginning of the source of an f string, and
             # parses it as a regular string.
-            value = eval(literal[1:])
+            value = ast.literal_eval(ast.unparse(node)[1:])
         else:
             value = node.value
 
-        yield node.lineno, node.col_offset, value, literal, ALL_PYTHON_CHECKERS
+        yield (
+            node.lineno,
+            node.col_offset,
+            node.end_lineno,
+            node.end_col_offset,
+            value,
+            [check_match_re, check_match_format_str],
+        )

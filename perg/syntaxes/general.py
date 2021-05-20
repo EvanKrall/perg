@@ -2,13 +2,26 @@
 
 import re
 import ast
+from perg.common_checkers import check_match_re
 
-def parse(f):
-        stringRE = re.compile(r'"(?:\\.|[^"])*"') # Matches double-quoted strings.
-        for lineno, line in enumerate(f):
+def parse(f, filename):
+    stringRE = re.compile(r'"(?:\\.|[^"])*"') # Matches double-quoted strings.
+    try:
+        lines = list(f)
+    except UnicodeDecodeError:
+        pass
+    else:
+        for lineno, line in enumerate(lines):
             for match in stringRE.finditer(line.rstrip('\n')):
                 literal = line[match.start():match.end()]
-                yield lineno, match.start(), unquote(literal), literal
+                yield (
+                    lineno + 1,
+                    match.start(),
+                    lineno + 1,
+                    match.end(),
+                    unquote(literal),
+                    [check_match_re,],
+                )
 
 
 def unquote(literal):
