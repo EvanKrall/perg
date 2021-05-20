@@ -5,6 +5,7 @@ import pkgutil
 import importlib
 import perg.syntaxes
 
+
 def find_files(paths, ignore_dot=True):
     """Find all the filenames described by self.paths, open them, and yield them and the syntax associated with them"""
     #TODO recursive (-r)
@@ -27,6 +28,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('text', type=str, help="The text to match patterns against.")
     parser.add_argument('paths', nargs='*', type=str, default=['.'])
+    parser.add_argument(
+        '--ignore-trivial-match',
+        action=argparse.BooleanOptionalAction,
+        help="Ignore patterns that match every string.",
+        default=True,
+    )
 
     return parser.parse_args()
 
@@ -34,6 +41,7 @@ def parse_args():
 def find_syntaxes():
     for _, name, _ in pkgutil.iter_modules(perg.syntaxes.__path__, 'perg.syntaxes.'):
         yield importlib.import_module(name)
+
 
 def print_match(
     filename,
@@ -67,6 +75,16 @@ def print_match(
         print(f"{prefix} {before}{red}{match}{endred}{after}")
 
 
+def pattern_is_trivial(check_fn, pattern):
+    """This tests a pattern against the empty string and each of the first 255 characters except newline. If all of
+    them match, the pattern is considered trivial. Example patterns that would match this:
+        .*
+        .?
+    """
+    test_strings = [''] + [chr(c) for c in range(1, 255) if chr(c) != '\n']
+    return all([check_fn(pattern, ts) for ts in test_strings])
+
+
 def main():
     args = parse_args()
 
@@ -85,7 +103,8 @@ def main():
                 for (start_lineno, start_col, end_lineno, end_col, pattern, check_fns) in syntax.parse(f, filename):
                     for check_fn in check_fns:
                         if check_fn(pattern, args.text):
-                            matches.add((filename, start_lineno, start_col, end_lineno, end_col))
+                            if not (args.ignore_trivial_match and pattern_is_trivial(check_fn, pattern)):
+                                matches.add((filename, start_lineno, start_col, end_lineno, end_col))
 
         for match in sorted(matches):
             print_match(*match, lines)
