@@ -2,7 +2,7 @@
 
 import re
 import ast
-from perg.common_checkers import check_match_re
+from perg.common_checkers import ALL_COMMON
 
 def parse(f, filename):
     stringRE = re.compile(r'"(?:\\.|[^"])*"') # Matches double-quoted strings.
@@ -20,7 +20,7 @@ def parse(f, filename):
                     lineno + 1,
                     match.end(),
                     unquote(literal),
-                    [check_match_re,],
+                    ALL_COMMON,
                 )
 
 
