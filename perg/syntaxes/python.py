@@ -7,7 +7,12 @@ from perg.common_checkers import ALL_COMMON
 
 def check_match_format_str(pattern, s, partial=False):
     regex = ""
-    for literal_text, field_name, format_spec, conversion in string.Formatter().parse(pattern):
+    try:
+        parsed = list(string.Formatter().parse(pattern))
+    except ValueError:
+        return False
+
+    for literal_text, field_name, format_spec, conversion in parsed:
         regex += re.escape(literal_text)
         if field_name is not None:
             regex += '.*'

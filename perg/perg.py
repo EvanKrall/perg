@@ -3,6 +3,7 @@ import os.path
 import os
 import pkgutil
 import importlib
+import warnings
 from collections import defaultdict
 
 import perg.syntaxes
@@ -136,9 +137,11 @@ def main():
             with open(filename) as f:
                 for (start_lineno, start_col, end_lineno, end_col, pattern, check_fns) in syntax.parse(f, filename):
                     for check_fn in check_fns:
-                        if check_fn(pattern, args.text):
-                            if passes_heuristics(check_fn, pattern, args.text, args):
-                                matches[(filename, start_lineno, start_col, end_lineno, end_col)].add(check_fn.__name__)
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            if check_fn(pattern, args.text):
+                                if passes_heuristics(check_fn, pattern, args.text, args):
+                                    matches[(filename, start_lineno, start_col, end_lineno, end_col)].add(check_fn.__name__)
 
         for match, checkers in sorted(matches.items()):
             print_match(*match, checkers, lines, args)

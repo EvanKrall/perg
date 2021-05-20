@@ -9,5 +9,9 @@ setup(
     author='Evan Krall',
     author_email='evan@evankrall.com',
     packages=find_packages(),
-    scripts=['perg/perg.py']
+    entry_points={
+        "console_scripts": [
+            "perg=perg.perg:main",
+        ],
+    },
 )
