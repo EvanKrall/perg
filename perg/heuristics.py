@@ -1,12 +1,21 @@
 
-def pattern_is_trivial(check_fn, pattern):
-    """This tests a pattern against the empty string and each of the first 255 characters except newline. If all of
+def pattern_matches_empty(check_fn, pattern):
+    """This tests a pattern against the empty string. Example patterns that would match this:
+        '.*'
+        ''
+    """
+    return check_fn(pattern, '', partial=-1)
+
+
+def pattern_matches_single_char(check_fn, pattern):
+    """This tests a pattern against each of the first 255 characters except newline. If all of
     them match, the pattern is considered trivial. Example patterns that would match this:
         .*
         .?
+        .+
     """
-    test_strings = [''] + [chr(c) for c in range(1, 255) if chr(c) != '\n']
-    return all([check_fn(pattern, ts) for ts in test_strings])
+    test_strings = [chr(c) for c in range(1, 255) if chr(c) != '\n']
+    return all([check_fn(pattern, ts, partial=-1) for ts in test_strings])
 
 
 def too_many_things_deletable(check_fn, pattern, s, max_deletable=-1, min_undeletable=0):

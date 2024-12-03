@@ -14,4 +14,8 @@ setup(
             "perg=perg.perg:main",
         ],
     },
+    install_requires=[
+        "tree-sitter",
+        "tree-sitter-python",
+    ],
 )

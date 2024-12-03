@@ -1,11 +1,9 @@
-from perg.heuristics import pattern_is_trivial
+from perg.heuristics import pattern_matches_empty
 from perg.common_checkers import check_match_re_simple
 
-def test_pattern_is_trivial():
-	assert check_match_re_simple('.*', '')
-	assert check_match_re_simple('.*', 'a')
-	assert pattern_is_trivial(check_match_re_simple, '.*')
-	assert pattern_is_trivial(check_match_re_simple, r'.?')
-	assert not pattern_is_trivial(check_match_re_simple, r'.+')
-	assert not pattern_is_trivial(check_match_re_simple, r'\w+')
-	assert not pattern_is_trivial(check_match_re_simple, r'\s+')
+def pattern_matches_empty():
+	assert pattern_matches_empty(check_match_re_simple, '.*')
+	assert pattern_matches_empty(check_match_re_simple, r'.?')
+	assert not pattern_matches_empty(check_match_re_simple, r'.+')
+	assert not pattern_matches_empty(check_match_re_simple, r'\w+')
+	assert not pattern_matches_empty(check_match_re_simple, r'\s+')

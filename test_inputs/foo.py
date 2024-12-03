@@ -18,3 +18,7 @@ verbose_regex = r"""
     baz # a third comment
 """
 
+concatenated_string = (
+    "hi hello"
+    " this will be a single string"
+)
