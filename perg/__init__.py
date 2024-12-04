@@ -6,44 +6,51 @@ from typing import Tuple
 @total_ordering
 @dataclass(frozen=True)
 class Location:
-	filename: str
-	start_lineno: int
-	start_col: int
-	end_lineno: int
-	end_col: int
+    filename: str
+    start_lineno: int
+    start_col: int
+    end_lineno: int
+    end_col: int
 
-	def __lt__(self, other):
-		assert isinstance(other, Location)
-		return (
-			self.filename,
-			self.start_lineno,
-			self.start_col,
-			self.end_lineno,
-			self.end_col,
-		) < (
-			other.filename,
-			other.start_lineno,
-			other.start_col,
-			other.end_lineno,
-			other.end_col,
-		)
+    def __lt__(self, other):
+        assert isinstance(other, Location)
+        return (
+            self.filename,
+            self.start_lineno,
+            self.start_col,
+            self.end_lineno,
+            self.end_col,
+        ) < (
+            other.filename,
+            other.start_lineno,
+            other.start_col,
+            other.end_lineno,
+            other.end_col,
+        )
 
 
 @dataclass(frozen=True)
 class Pattern:
-	location: Location
-	value: str
-	check_fns: Tuple[Callable, ...]
+    location: Location
+    value: str
+    check_fns: Tuple[Callable, ...]
 
 
 @dataclass(frozen=True)
 class CheckResult:
-	text: str
-	span: Tuple[int, int]  # the span (start, end) of text which matched.
+    text: str
+    spans: Tuple[Tuple[int, int], ...]  # the spans (start, end) of text which matched.
 
 
 @dataclass(frozen=True)
 class Match:
-	check_fn: Callable
-	pattern: Pattern
-	result: CheckResult
+    check_fn: Callable
+    pattern: Pattern
+    result: CheckResult
+
+
+DEBUG = False
+
+def debug(s):
+    if DEBUG:
+        print(s)

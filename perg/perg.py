@@ -14,6 +14,9 @@ import perg.syntaxes
 from perg.syntaxes import Relevance
 from perg import heuristics
 from perg import Match
+from perg import debug
+import perg
+
 
 def find_files(paths, ignore_dot=True):
     """Find all the filenames described by self.paths, open them, and yield them and the syntax associated with them"""
@@ -128,11 +131,24 @@ def parse_args():
         help="Show your original string with the partial match highlighted. Defaults to on with --partial.",
         default=None,
     )
-
+    parser.add_argument(
+        '--no-heuristics',
+        action='store_true',
+        default=False,
+    )
+    parser.add_argument(
+        '--debug',
+        action=argparse.BooleanOptionalAction,
+        help="Print debug messages.",
+        default=False,
+    )
 
     args = parser.parse_args()
     if args.show_highlighted_partial_match is None:
         args.show_highlighted_partial_match = (args.partial >= 0)
+
+    if args.debug:
+        perg.DEBUG = True
     return args
 
 
@@ -159,13 +175,20 @@ def print_match(
     args,
 ):
     RESET = '\u001b[0m'
-    RED = '\u001b[31;1m'
-    YELLOW = '\u001b[33;1m'
-    GREEN = '\u001b[32;1m'
-    CYAN = '\u001b[36;1m'
-    BLUE = '\u001b[34;1m'
-    PURPLE = '\u001b[35;1m'
+    RED = '\u001b[31m'
+    YELLOW = '\u001b[33m'
+    GREEN = '\u001b[32m'
+    CYAN = '\u001b[36m'
+    BLUE = '\u001b[34m'
+    PURPLE = '\u001b[35m'
+
     BRIGHT = '\u001b[37;1m'
+    BRIGHT_RED = '\u001b[31;1m'
+    BRIGHT_YELLOW = '\u001b[33;1m'
+    BRIGHT_GREEN = '\u001b[32;1m'
+    BRIGHT_CYAN = '\u001b[36;1m'
+    BRIGHT_BLUE = '\u001b[34;1m'
+    BRIGHT_PURPLE = '\u001b[35;1m'
 
     def prefix_unpadded(lineno):
         if lineno == location.start_lineno:
@@ -213,7 +236,7 @@ def print_match(
 
     if args.print_checker_names and not args.show_highlighted_partial_match:
         checker_names = [match.check_fn.__name__ for match in matches]
-        print(f"{GREEN}({', '.join(checker_names)}){RESET}\n")
+        print(f"{BRIGHT_PURPLE}({', '.join(checker_names)}){RESET}\n")
 
     if args.show_highlighted_partial_match:
         matches_by_result = {}
@@ -222,12 +245,36 @@ def print_match(
 
         for result, matches2 in matches_by_result.items():
             text = result.text
-            start, end = result.span
             checker_names = [match.check_fn.__name__ for match in matches2]
-            print(f"{GREEN}({', '.join(checker_names)}){RESET}: {text[:start]}{PURPLE}{text[start:end]}{RESET}{text[end:]}")
+            print(f"{BRIGHT_PURPLE}({', '.join(checker_names)}):{RESET} ", end='')
+
+            colors = [RESET for _ in text]
+
+            lastend=0
+            for span in result.spans:
+                start, end = span
+                for i in range(start, end):
+                    colors[i] = BRIGHT
+
+            replaceable = heuristics.replaceable_chars(match.check_fn, match.pattern.value, text, args.partial)
+            deletable = heuristics.deletable_chars(match.check_fn, match.pattern.value, text, args.partial)
+            for i in deletable:
+                colors[i] = GREEN
+
+            for i in replaceable:
+                if i in deletable:
+                    colors[i] = CYAN
+                else:
+                    colors[i] = BLUE
+
+            print(''.join(color+char+RESET for color, char in zip(colors, text)))
+            print(replaceable, deletable)
 
 
 def passes_heuristics(check_fn, pattern, s, args):
+    if args.no_heuristics:
+        return True
+
     if args.ignore_empty_match and heuristics.pattern_matches_empty(check_fn, pattern):
         return False
 
@@ -239,6 +286,7 @@ def passes_heuristics(check_fn, pattern, s, args):
             check_fn,
             pattern,
             s,
+            partial=args.partial,
             max_deletable=args.max_deletable,
             min_undeletable=args.min_undeletable,
         ):
@@ -248,7 +296,7 @@ def passes_heuristics(check_fn, pattern, s, args):
 
 
 def run_syntax_on_file(syntax, filename, matches, args):
-    print(f"trying {syntax} on {filename}")
+    debug(f"trying {syntax} on {filename}")
     with open(filename) as f:
         for pattern in syntax.parse(f, filename):
             for check_fn in pattern.check_fns:
@@ -277,7 +325,7 @@ def main():
     all_syntaxes = list(find_syntaxes(args.syntax_allowlist))
     for filename in find_files(args.paths):
         syntax_relevances = group_syntaxes_by_relevance(all_syntaxes, filename)
-        print(syntax_relevances)
+        debug(syntax_relevances)
         matches = defaultdict(set)
 
         try:
@@ -297,11 +345,11 @@ def main():
                         if args.print_errors:
                             print(f"syntax {syntax} errored on {filename}:")
                             traceback.print_exc()
-                        elif args.debug_errors:
+                        if args.debug_errors:
                             extype, value, tb = sys.exc_info()
                             traceback.print_exc()
                             pdb.post_mortem(tb)
-                        elif args.raise_errors:
+                        if args.raise_errors:
                             raise
                 break  # if we have any YES syntaxes, don't run the MAYBEs.
         if not successful_parse:

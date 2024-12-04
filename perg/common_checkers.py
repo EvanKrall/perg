@@ -3,6 +3,7 @@ import fnmatch
 from typing import Optional
 
 from perg import CheckResult
+from perg import debug
 
 ALL_COMMON = []
 RE_FLAGS = re.MULTILINE | re.DOTALL
@@ -27,13 +28,18 @@ def check_match_re_simple(pattern, s, partial, flags=RE_FLAGS) -> Optional[Check
         return None
 
     if partial >= 0:
-        re_search_or_fullmatch = re.search
-    else:
-        re_search_or_fullmatch = re.fullmatch
+        spans = []
+        for match in re.finditer(compiled, s):
+            if len(match.group(0)) >= partial:
+                spans.append(match.span())
 
-    if match := re_search_or_fullmatch(compiled, s):
-        if len(match.group(0)) >= partial:
-            return CheckResult(text=s, span=match.span())
+        if spans:
+            return CheckResult(text=s, spans=tuple(spans))
+        else:
+            return None
+    else:
+        if match := re.fullmatch(compiled, s):
+            return CheckResult(text=s, spans=(match.span()))
         else:
             return None
 
@@ -44,20 +50,30 @@ def check_string_match(pattern, s, partial) -> Optional[CheckResult]:
         if len(pattern) < partial:
             return None
 
-        start = s.find(pattern)
-        if start == -1:
-            return None
+        spans = []
 
-        end = start + len(pattern)
-        return CheckResult(text=s, span=(start, end))
+        start = 0
+        while True:
+            start = s.find(pattern, start)
+            if start == -1:
+                break
+            end = start + len(pattern)
+            spans.append((start, end))
+            start += 1
+
+        if spans:
+            return CheckResult(text=s, spans=tuple(spans))
+        else:
+            return None
     else:
         if pattern == s:
-            return CheckResult(text=s, span=(0, len(s)))
+            return CheckResult(text=s, spans=((0, len(s)),))
         return None
 
 @common_checker
 def check_shell_glob(pattern, s, partial) -> Optional[CheckResult]:
     regex = fnmatch.translate(pattern)
+    debug(f"pattern: {pattern}, regex: {regex}")
     return check_match_re_simple(regex, s, partial=partial)
 
 

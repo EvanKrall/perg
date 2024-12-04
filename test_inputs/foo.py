@@ -1,4 +1,6 @@
-my_cool_string = "foo .* baz"
+greedy = "foo .* baz"
+non_greedy = "foo .*? baz"
+
 neat_regex = ".*"
 
 bar = "hi"
@@ -22,3 +24,8 @@ concatenated_string = (
     "hi hello"
     " this will be a single string"
 )
+
+more_specific_regex = "foo .a?. baz"
+more_specific_regex = "foo .a. baz"
+
+url_route = r"/api/v1/action/(?P<thing>[^/]*[a-f0-9]{5})"
