@@ -8,6 +8,7 @@ from tree_sitter import Language, Parser
 from perg.common_checkers import ALL_COMMON
 from perg.common_checkers import check_match_re_simple
 from perg.syntaxes import Relevance
+from perg.syntaxes import PergSyntaxParseError
 from perg import Pattern
 from perg import Location
 
@@ -153,6 +154,9 @@ def source_to_node(source):
 
 
 def parse(f, filename):
-    source = f.read()
+    try:
+        source = f.read()
+    except UnicodeDecodeError:
+        raise PergSyntaxParseError()
     node = source_to_node(source)
     yield from parse_node(node, filename)

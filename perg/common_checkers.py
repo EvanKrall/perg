@@ -2,26 +2,28 @@ import re
 import fnmatch
 from typing import Optional
 
+from perg import CheckFunction
 from perg import CheckResult
+from perg import Pattern
 from perg import debug
 
-ALL_COMMON = []
+_ALL_COMMON = []
 RE_FLAGS = re.MULTILINE | re.DOTALL
 
 
-def common_checker(check_fn):
-    ALL_COMMON.append(check_fn)
+def common_checker(check_fn: CheckFunction):
+    _ALL_COMMON.append(check_fn)
     return check_fn
 
 
 
 @common_checker
-def check_match_re_verbose(pattern, s, partial) -> Optional[CheckResult]:
+def check_match_re_verbose(pattern: str, s: str, partial: bool) -> Optional[CheckResult]:
     return check_match_re_simple(pattern, s, partial=partial, flags=RE_FLAGS | re.VERBOSE)
 
 
 @common_checker
-def check_match_re_simple(pattern, s, partial, flags=RE_FLAGS) -> Optional[CheckResult]:
+def check_match_re_simple(pattern: str, s: str, partial: bool, flags=RE_FLAGS) -> Optional[CheckResult]:
     try:
         compiled = re.compile(pattern, flags)
     except re.error:
@@ -38,14 +40,15 @@ def check_match_re_simple(pattern, s, partial, flags=RE_FLAGS) -> Optional[Check
         else:
             return None
     else:
-        if match := re.fullmatch(compiled, s):
-            return CheckResult(text=s, spans=(match.span()))
+        maybematch = re.fullmatch(compiled, s)
+        if maybematch is not None:
+            return CheckResult(text=s, spans=(maybematch.span(),))
         else:
             return None
 
 
 @common_checker
-def check_string_match(pattern, s, partial) -> Optional[CheckResult]:
+def check_string_match(pattern: str, s: str, partial: bool) -> Optional[CheckResult]:
     if partial >= 0:
         if len(pattern) < partial:
             return None
@@ -71,10 +74,10 @@ def check_string_match(pattern, s, partial) -> Optional[CheckResult]:
         return None
 
 @common_checker
-def check_shell_glob(pattern, s, partial) -> Optional[CheckResult]:
+def check_shell_glob(pattern: str, s: str, partial: bool) -> Optional[CheckResult]:
     regex = fnmatch.translate(pattern)
     debug(f"pattern: {pattern}, regex: {regex}")
     return check_match_re_simple(regex, s, partial=partial)
 
 
-ALL_COMMON = tuple(ALL_COMMON)
+ALL_COMMON = tuple(_ALL_COMMON)

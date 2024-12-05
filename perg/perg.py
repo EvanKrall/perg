@@ -1,4 +1,5 @@
 import argparse
+import functools
 import importlib
 import os.path
 import os
@@ -9,12 +10,27 @@ import traceback
 import warnings
 
 from collections import defaultdict
+from typing import Collection
+from typing import List
+from typing import Iterator
+from typing import Tuple
 
 import perg.syntaxes
 from perg.syntaxes import Relevance
+from perg.syntaxes import PergSyntaxParseError
 from perg import heuristics
 from perg import Match
+from perg import CheckResult
+from perg import Location
 from perg import debug
+from perg import Syntax
+from perg import NoMatchError
+from perg.color import BRIGHT_YELLOW
+from perg.color import RESET
+from perg.color import BRIGHT
+from perg.color import GREEN
+from perg.color import CYAN
+from perg.color import BLUE
 import perg
 
 
@@ -74,16 +90,8 @@ def parse_args():
     )
     parser.add_argument(
         '--partial',
-        nargs='?',
-        const=1,
-        type=int,
-        default=-1,
-        help=(
-            'Show patterns that match a substring of at least length N of your text.'
-            ' (if --partial is not specified, patterns must match the whole text.)'
-            ' --partial by itself requires a match of at least 1 character.'
-            ' --partial=N allows you to specify a minimum length.'
-        )
+        action=argparse.BooleanOptionalAction,
+        help="Show patterns that only match a portion of your string.",
     )
 
     parser.add_argument(
@@ -142,10 +150,28 @@ def parse_args():
         help="Print debug messages.",
         default=False,
     )
+    parser.add_argument(
+        '--score-by-information',
+        action=argparse.BooleanOptionalAction,
+        help="Score matches by the amount of information they give.",
+        default=True,
+    )
+    parser.add_argument(
+        '--show-score',
+        action=argparse.BooleanOptionalAction,
+        help="Show how much of the information in the string is implied by the pattern.",
+        default=False,
+    )
+    parser.add_argument(
+        '--pct-of-best-score',
+        type=float,
+        default=50.0,
+        help="Only show matches with a score that's at least this percent of the best-scoring match.",
+    )
 
     args = parser.parse_args()
-    if args.show_highlighted_partial_match is None:
-        args.show_highlighted_partial_match = (args.partial >= 0)
+    # if args.show_highlighted_partial_match is None:
+    #     args.show_highlighted_partial_match = args.partial
 
     if args.debug:
         perg.DEBUG = True
@@ -169,123 +195,65 @@ def find_syntaxes(syntax_allowlist=()):
     return syntaxes
 
 def print_match(
-    location,
-    matches,
-    lines,
+    location: Location,
+    scored_matches: Collection[Tuple[float, Match]],
     args,
 ):
-    RESET = '\u001b[0m'
-    RED = '\u001b[31m'
-    YELLOW = '\u001b[33m'
-    GREEN = '\u001b[32m'
-    CYAN = '\u001b[36m'
-    BLUE = '\u001b[34m'
-    PURPLE = '\u001b[35m'
 
-    BRIGHT = '\u001b[37;1m'
-    BRIGHT_RED = '\u001b[31;1m'
-    BRIGHT_YELLOW = '\u001b[33;1m'
-    BRIGHT_GREEN = '\u001b[32;1m'
-    BRIGHT_CYAN = '\u001b[36;1m'
-    BRIGHT_BLUE = '\u001b[34;1m'
-    BRIGHT_PURPLE = '\u001b[35;1m'
+    location.print_highlighted(args.before, args.context, args.after)
 
-    def prefix_unpadded(lineno):
-        if lineno == location.start_lineno:
-            return f"{location.filename}:{lineno}: "
-        else:
-            return f"{location.filename}-{lineno}- "
+    matches_by_score_and_result: dict[(float, CheckResult), List[Match]] = {}
+    for score, match in scored_matches:
+        matches_by_score_and_result.setdefault((score, match.result), []).append(match)
 
-    longest_lineno = min(location.end_lineno + max(args.context, args.after), len(lines))
-    longest_prefix = prefix_unpadded(longest_lineno)
-
-    def prefix(lineno):
-        return f"{prefix_unpadded(lineno):<{len(longest_prefix)}}"
-
-    if args.before or args.context or args.after:
-        print('---')
-
-    if args.before or args.context:
-        before_context_lines = max(args.before, args.context)
-        start_context = max(1, location.start_lineno - before_context_lines)
-        for lineno in range(start_context, location.start_lineno):
-            print(f"{prefix(lineno)} {lines[lineno-1]}")
-
-    for lineno in range(location.start_lineno, location.end_lineno+1):
-        line = lines[lineno-1]
-        if lineno == location.start_lineno:
-            highlight_begin = location.start_col
-        else:
-            highlight_begin = 0
-        if lineno == location.end_lineno:
-            highlight_end = location.end_col
-        else:
-            highlight_end = len(line)
-
-        before = line[:highlight_begin]
-        match = line[highlight_begin:highlight_end]
-        after = line[highlight_end:]
-        print(f"{prefix(lineno)} {before}{RED}{match}{RESET}{after}")
-
-    if args.after or args.context:
-        after_context_lines = max(args.after, args.context)
-        end_context = min(len(lines), location.end_lineno + after_context_lines)
-        for lineno in range(location.end_lineno+1, end_context):
-            line = lines[lineno-1]
-            print(f"{prefix(lineno)} {line}")
-
-    if args.print_checker_names and not args.show_highlighted_partial_match:
-        checker_names = [match.check_fn.__name__ for match in matches]
-        print(f"{BRIGHT_PURPLE}({', '.join(checker_names)}){RESET}\n")
-
-    if args.show_highlighted_partial_match:
-        matches_by_result = {}
-        for match in matches:
-            matches_by_result.setdefault(match.result, []).append(match)
-
-        for result, matches2 in matches_by_result.items():
-            text = result.text
-            checker_names = [match.check_fn.__name__ for match in matches2]
+    for (score, result), matches2 in matches_by_score_and_result.items():
+        text = result.text
+        checker_names = [match.check_fn.__name__ for match in matches2]
+        if args.print_checker_names:
             print(f"{BRIGHT_PURPLE}({', '.join(checker_names)}):{RESET} ", end='')
 
-            colors = [RESET for _ in text]
+        colors = [RESET for _ in text]
 
-            lastend=0
-            for span in result.spans:
-                start, end = span
-                for i in range(start, end):
-                    colors[i] = BRIGHT
+        lastend=0
+        for span in result.spans:
+            start, end = span
+            for i in range(start, end):
+                colors[i] = BRIGHT
 
-            replaceable = heuristics.replaceable_chars(match.check_fn, match.pattern.value, text, args.partial)
-            deletable = heuristics.deletable_chars(match.check_fn, match.pattern.value, text, args.partial)
-            for i in deletable:
-                colors[i] = GREEN
+        replaceable = heuristics.replaceable_chars(match)
+        deletable = heuristics.deletable_chars(match)
+        for i in deletable:
+            colors[i] = GREEN
 
-            for i in replaceable:
-                if i in deletable:
-                    colors[i] = CYAN
-                else:
-                    colors[i] = BLUE
+        for i in replaceable:
+            if i in deletable:
+                colors[i] = CYAN
+            else:
+                colors[i] = BLUE
 
+        if args.show_highlighted_partial_match:
             print(''.join(color+char+RESET for color, char in zip(colors, text)))
-            print(replaceable, deletable)
+        if args.show_score:
+            print(f"{BRIGHT_YELLOW}Score: {score}{RESET}")
+
+    print()
 
 
-def passes_heuristics(check_fn, pattern, s, args):
+def passes_heuristics_first_pass(match, args):
     if args.no_heuristics:
         return True
 
-    if args.ignore_empty_match and heuristics.pattern_matches_empty(check_fn, pattern):
+    if args.ignore_empty_match and heuristics.pattern_matches_empty(match):
         return False
 
-    if args.ignore_single_char_match and heuristics.pattern_matches_single_char(check_fn, pattern):
+    if args.ignore_single_char_match and heuristics.pattern_matches_single_char(match):
         return False
 
     if args.max_deletable != -1 or args.min_undeletable > 0:
         if heuristics.too_many_things_deletable(
-            check_fn,
-            pattern,
-            s,
+            match.check_fn,
+            match.pattern,
+            match.text,
             partial=args.partial,
             max_deletable=args.max_deletable,
             min_undeletable=args.min_undeletable,
@@ -295,16 +263,17 @@ def passes_heuristics(check_fn, pattern, s, args):
     return True
 
 
-def run_syntax_on_file(syntax, filename, matches, args):
+def run_syntax_on_file(syntax: Syntax, filename: str, text: str, partial: bool) -> Iterator[Match]:
     debug(f"trying {syntax} on {filename}")
     with open(filename) as f:
         for pattern in syntax.parse(f, filename):
             for check_fn in pattern.check_fns:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    if check_result := check_fn(pattern.value, args.text, partial=args.partial):
-                        if passes_heuristics(check_fn, pattern.value, args.text, args):
-                            matches[pattern.location].add(Match(check_fn=check_fn, pattern=pattern, result=check_result))
+                    try:
+                        yield Match(check_fn, pattern, text, partial)
+                    except NoMatchError:
+                        pass
 
 def group_syntaxes_by_relevance(all_syntaxes, filename):
     syntax_scores = {
@@ -323,24 +292,23 @@ def main():
     args = parse_args()
 
     all_syntaxes = list(find_syntaxes(args.syntax_allowlist))
+    matches = set()
+
     for filename in find_files(args.paths):
         syntax_relevances = group_syntaxes_by_relevance(all_syntaxes, filename)
         debug(syntax_relevances)
-        matches = defaultdict(set)
-
-        try:
-            with open(filename) as f:
-                lines = [l.rstrip('\n') for l in f]
-        except UnicodeDecodeError:
-            continue
 
         successful_parse = False
         for relevance in [Relevance.YES, Relevance.MAYBE]:
             if syntaxes := syntax_relevances[relevance]:
                 for syntax in syntaxes:
                     try:
-                        run_syntax_on_file(syntax, filename, matches, args)
+                        for match in run_syntax_on_file(syntax, filename, args.text, args.partial):
+                            if passes_heuristics_first_pass(match, args):
+                                matches.add(match)
                         successful_parse = True
+                    except PergSyntaxParseError:
+                        pass
                     except Exception as e:
                         if args.print_errors:
                             print(f"syntax {syntax} errored on {filename}:")
@@ -353,13 +321,33 @@ def main():
                             raise
                 break  # if we have any YES syntaxes, don't run the MAYBEs.
         if not successful_parse:
-            print(
-                f"Couldn't parse file {filename} with syntax{'es' if len(syntaxes) > 1 else ''} {', '.join(syntaxes)}",
-                file=sys.stderr,
+            debug(
+                f"Couldn't parse file {filename} with syntax{'es' if len(syntaxes) > 1 else ''} {', '.join(s.__name__ for s in syntaxes)}",
             )
 
-        for location, matches in sorted(matches.items()):
-            print_match(location, matches, lines, args)
+    if args.score_by_information:
+        match_score_fn = heuristics.information
+    else:
+        match_score_fn = lambda x: 1
+
+    scored_matches = sorted(
+        ((match_score_fn(match), match) for match in matches),
+        reverse=True,
+    )
+    if scored_matches:
+        best_score, _ = scored_matches[0]
+        threshold = args.pct_of_best_score * best_score / 100
+        for i, (score, match) in enumerate(scored_matches):
+            if score < threshold:
+                scored_matches = scored_matches[:i]
+                break
+
+    scored_matches_by_location: Dict[Location, List[Tuple[float, Match]]] = {}
+    for score, match in scored_matches:
+        scored_matches_by_location.setdefault(match.pattern.location, []).append((score, match))
+
+    for location, scored_matches_for_location in scored_matches_by_location.items():
+        print_match(location, scored_matches_for_location, args)
 
 if __name__ == "__main__":
     main()
