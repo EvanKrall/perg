@@ -7,6 +7,7 @@ from typing import Protocol
 from typing import Tuple
 from typing import IO
 from typing import TypeVar
+from typing import Optional
 
 from perg.color import RED
 from perg.color import RESET
@@ -93,7 +94,7 @@ class CheckResult:
 
 
 T = TypeVar('T')
-CheckFunction = Callable[[T, str, bool], CheckResult]
+CheckFunction = Callable[[T, str, bool], Optional[CheckResult]]
 
 
 @total_ordering

@@ -31,6 +31,7 @@ from perg.color import BRIGHT
 from perg.color import GREEN
 from perg.color import CYAN
 from perg.color import BLUE
+from perg.color import BRIGHT_PURPLE
 import perg
 
 
@@ -202,7 +203,7 @@ def print_match(
 
     location.print_highlighted(args.before, args.context, args.after)
 
-    matches_by_score_and_result: dict[(float, CheckResult), List[Match]] = {}
+    matches_by_score_and_result: dict[Tuple[float, CheckResult], List[Match]] = {}
     for score, match in scored_matches:
         matches_by_score_and_result.setdefault((score, match.result), []).append(match)
 

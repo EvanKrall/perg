@@ -97,7 +97,7 @@ def test_deletable_chars_5():
     # Even though we'd still find 3 occurrences of the pattern in the text if we deleted e.g. the `a` in the first `bar`.
     # We consider a character deletable if it results in an "equivalent" span
     # -- that is, one where the start/end are within 1 character of the original span.
-    assert check_match_re_simple(match.pattern, "foo br baz foo bar baz foo bar baz", partial=True).spans == (
+    assert check_match_re_simple(match.pattern.value, "foo br baz foo bar baz foo bar baz", partial=True).spans == (
         (0, 9),  # This span is not equivalent to the previous.
         (11, 17),  # This span is not considered when modifying the first bar, since it doesn't include the first bar.
         (23, 29),  # This span is not considered when modifying the first bar, since it doesn't include the first bar.

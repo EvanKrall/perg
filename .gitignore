@@ -2,3 +2,4 @@
 .tox/
 perg.egg-info
 .tox
+.DS_Store
