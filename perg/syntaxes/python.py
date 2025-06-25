@@ -18,10 +18,15 @@ parser = Parser(PY_LANGUAGE)
 
 
 def check_relevance(filename):
-    if filename.endswith('.py'):
-        return Relevance.YES
-    else:
-        return Relevance.MAYBE
+    for ext in ('.py', '.pyi', '.pyx'):
+        if filename.endswith(ext):
+            return Relevance.YES
+
+    # Definitely not Python
+    if filename.endswith('.pyc'):
+        return Relevance.NO
+
+    return Relevance.MAYBE
 
 
 def check_match_python_format_str(pattern, s, partial=False):
@@ -49,7 +54,7 @@ def node_to_string(node):
 
         start_quote, content, end_quote = node.children
         return node_to_string(content)
-    
+
     if node.type != 'string_content':
         raise NotImplementedError(f"dunno how to handle {node.type}")
 

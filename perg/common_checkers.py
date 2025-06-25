@@ -29,7 +29,7 @@ def check_match_re_simple(pattern: str, s: str, partial: bool, flags=RE_FLAGS) -
     except re.error:
         return None
 
-    if partial >= 0:
+    if partial:
         spans = []
         for match in re.finditer(compiled, s):
             if len(match.group(0)) >= partial:
@@ -49,7 +49,7 @@ def check_match_re_simple(pattern: str, s: str, partial: bool, flags=RE_FLAGS) -
 
 @common_checker
 def check_string_match(pattern: str, s: str, partial: bool) -> Optional[CheckResult]:
-    if partial >= 0:
+    if partial:
         if len(pattern) < partial:
             return None
 
@@ -76,7 +76,7 @@ def check_string_match(pattern: str, s: str, partial: bool) -> Optional[CheckRes
 @common_checker
 def check_shell_glob(pattern: str, s: str, partial: bool) -> Optional[CheckResult]:
     regex = fnmatch.translate(pattern)
-    debug(f"pattern: {pattern}, regex: {regex}")
+    # debug(f"pattern: {pattern}, regex: {regex}")
     return check_match_re_simple(regex, s, partial=partial)
 
 

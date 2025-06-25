@@ -268,6 +268,7 @@ def run_syntax_on_file(syntax: Syntax, filename: str, text: str, partial: bool) 
     debug(f"trying {syntax} on {filename}")
     with open(filename) as f:
         for pattern in syntax.parse(f, filename):
+            debug(pattern)
             for check_fn in pattern.check_fns:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
@@ -309,7 +310,11 @@ def main():
                                 matches.add(match)
                         successful_parse = True
                     except PergSyntaxParseError:
-                        pass
+                        if relevance == Relevance.YES:
+                            # if we think the syntax is definitely relevant, we should raise an error if we can't parse.
+                            raise
+                        else:
+                            pass
                     except Exception as e:
                         if args.print_errors:
                             print(f"syntax {syntax} errored on {filename}:")
