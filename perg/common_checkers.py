@@ -4,8 +4,6 @@ from typing import Optional
 
 from perg import CheckFunction
 from perg import CheckResult
-from perg import Pattern
-from perg import debug
 
 _ALL_COMMON = []
 RE_FLAGS = re.MULTILINE | re.DOTALL

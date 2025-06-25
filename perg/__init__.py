@@ -41,7 +41,7 @@ class Location:
 
     def print_highlighted(self, before=0, context=0, after=0):
         with open(self.filename) as f:
-            lines = [l.rstrip('\n') for l in f]
+            lines = [line.rstrip('\n') for line in f]
 
         def prefix_unpadded(lineno):
             if lineno == self.start_lineno:

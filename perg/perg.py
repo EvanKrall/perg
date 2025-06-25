@@ -1,5 +1,4 @@
 import argparse
-import functools
 import importlib
 import os.path
 import os
@@ -9,7 +8,6 @@ import sys
 import traceback
 import warnings
 
-from collections import defaultdict
 from typing import Collection
 from typing import List
 from typing import Iterator
@@ -219,7 +217,6 @@ def print_match(
 
         colors = [RESET for _ in text]
 
-        lastend=0
         for span in result.spans:
             start, end = span
             for i in range(start, end):
@@ -256,10 +253,7 @@ def passes_heuristics_first_pass(match, args):
 
     if args.max_deletable != -1 or args.min_undeletable > 0:
         if heuristics.too_many_things_deletable(
-            match.check_fn,
-            match.pattern,
-            match.text,
-            partial=args.partial,
+            match=match,
             max_deletable=args.max_deletable,
             min_undeletable=args.min_undeletable,
         ):
@@ -320,7 +314,7 @@ def main() -> None:
                             raise
                         else:
                             pass
-                    except Exception as e:
+                    except Exception:
                         if args.print_errors:
                             print(f"syntax {syntax} errored on {filename}:")
                             traceback.print_exc()
@@ -339,7 +333,7 @@ def main() -> None:
     if args.score_by_information:
         match_score_fn = heuristics.information
     else:
-        match_score_fn = lambda x: 1
+        match_score_fn = lambda x: 1  # noqa: E731
 
     scored_matches = sorted(
         ((match_score_fn(match), match) for match in matches),

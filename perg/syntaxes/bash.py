@@ -1,12 +1,8 @@
-from dataclasses import dataclass
-import re
-import string
 import shlex
 
 import tree_sitter_bash
 from tree_sitter import Language, Parser
 
-from perg.common_checkers import ALL_COMMON
 from perg.common_checkers import check_match_re_simple
 from perg.common_checkers import check_match_re_verbose
 from perg.common_checkers import check_shell_glob
