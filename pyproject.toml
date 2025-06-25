@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "perg-search"
-version = "0.0.1"
+version = "0.0.2"
 description = "Search code for patterns that match a given string"
 authors = [
     { name = "Evan Krall", email = "evan@evankrall.com" }
