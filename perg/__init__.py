@@ -94,7 +94,7 @@ class CheckResult:
 
 
 T = TypeVar('T')
-CheckFunction = Callable[[T, str, bool], Optional[CheckResult]]
+CheckFunction = Callable[[T, str, int], Optional[CheckResult]]
 
 
 @total_ordering

@@ -34,7 +34,7 @@ def make_match(
 
 def test_pattern_matches_empty():
     assert heuristics.pattern_matches_empty(make_match('.*', 'doesntmatter'))
-    assert heuristics.pattern_matches_empty(make_match(r'.?', 'doesntmatter'))
+    assert heuristics.pattern_matches_empty(make_match(r'.?', 'doesntmatter', partial=1))
     assert not heuristics.pattern_matches_empty(make_match(r'.+', 'doesntmatter'))
     assert not heuristics.pattern_matches_empty(make_match(r'\w+', 'doesntmatter'))
     assert not heuristics.pattern_matches_empty(make_match(r'\s+', ' '))

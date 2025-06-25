@@ -16,7 +16,7 @@ def pattern_matches_single_char(match):
         .+
     """
     test_strings = [chr(c) for c in range(1, 255) if chr(c) != '\n']
-    return all([match.check_fn(match.pattern.value, ts, partial=-1) for ts in test_strings])
+    return all(match.check_fn(match.pattern.value, ts, partial=-1) for ts in test_strings)
 
 
 def too_many_things_deletable(match, max_deletable=-1, min_undeletable=0):

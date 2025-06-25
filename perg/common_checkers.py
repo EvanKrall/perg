@@ -18,18 +18,18 @@ def common_checker(check_fn: CheckFunction):
 
 
 @common_checker
-def check_match_re_verbose(pattern: str, s: str, partial: bool) -> Optional[CheckResult]:
+def check_match_re_verbose(pattern: str, s: str, partial: int) -> Optional[CheckResult]:
     return check_match_re_simple(pattern, s, partial=partial, flags=RE_FLAGS | re.VERBOSE)
 
 
 @common_checker
-def check_match_re_simple(pattern: str, s: str, partial: bool, flags=RE_FLAGS) -> Optional[CheckResult]:
+def check_match_re_simple(pattern: str, s: str, partial: int, flags=RE_FLAGS) -> Optional[CheckResult]:
     try:
         compiled = re.compile(pattern, flags)
     except re.error:
         return None
 
-    if partial:
+    if partial >= 0:
         spans = []
         for match in re.finditer(compiled, s):
             if len(match.group(0)) >= partial:
@@ -48,8 +48,8 @@ def check_match_re_simple(pattern: str, s: str, partial: bool, flags=RE_FLAGS) -
 
 
 @common_checker
-def check_string_match(pattern: str, s: str, partial: bool) -> Optional[CheckResult]:
-    if partial:
+def check_string_match(pattern: str, s: str, partial: int) -> Optional[CheckResult]:
+    if partial >= 0:
         if len(pattern) < partial:
             return None
 
@@ -74,7 +74,7 @@ def check_string_match(pattern: str, s: str, partial: bool) -> Optional[CheckRes
         return None
 
 @common_checker
-def check_shell_glob(pattern: str, s: str, partial: bool) -> Optional[CheckResult]:
+def check_shell_glob(pattern: str, s: str, partial: int) -> Optional[CheckResult]:
     regex = fnmatch.translate(pattern)
     # debug(f"pattern: {pattern}, regex: {regex}")
     return check_match_re_simple(regex, s, partial=partial)

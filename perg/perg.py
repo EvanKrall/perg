@@ -14,6 +14,7 @@ from typing import Collection
 from typing import List
 from typing import Iterator
 from typing import Tuple
+from typing import Dict
 
 import perg.syntaxes
 from perg.syntaxes import Relevance
@@ -91,8 +92,11 @@ def parse_args():
     )
     parser.add_argument(
         '--partial',
-        action=argparse.BooleanOptionalAction,
-        help="Show patterns that only match a portion of your string.",
+        type=int,
+        nargs='?',
+        const=1,
+        default=-1,
+        help="Show patterns that only match a portion of your string that is at least this many characters. If less than 0, only patterns that match your full string will count. If specified with no value (i.e. just --partial), defaults to 1.",
     )
 
     parser.add_argument(
@@ -277,6 +281,7 @@ def run_syntax_on_file(syntax: Syntax, filename: str, text: str, partial: bool) 
                     except NoMatchError:
                         pass
 
+
 def group_syntaxes_by_relevance(all_syntaxes, filename):
     syntax_scores = {
         Relevance.NO: [],
@@ -290,7 +295,7 @@ def group_syntaxes_by_relevance(all_syntaxes, filename):
     return syntax_scores
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     all_syntaxes = list(find_syntaxes(args.syntax_allowlist))
