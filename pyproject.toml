@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "perg-search"
+version = "0.0.1"
+description = "Search code for patterns that match a given string"
+authors = [
+    { name = "Evan Krall", email = "evan@evankrall.com" }
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "tree-sitter",
+    "tree-sitter-python",
+    "tree-sitter-bash",
+]
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.scripts]
+perg = "perg.perg:main"
+
+[tool.setuptools.packages.find]
+where = ["perg"]

@@ -3,3 +3,5 @@
 perg.egg-info
 .tox
 .DS_Store
+dist/
+*/*.egg-info/
