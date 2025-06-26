@@ -5,3 +5,5 @@ perg.egg-info
 .DS_Store
 dist/
 */*.egg-info/
+build/
+perg_search.egg-info/

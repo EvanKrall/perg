@@ -12,9 +12,9 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "tree-sitter",
+    "tree-sitter @ git+https://github.com/tree-sitter/py-tree-sitter@d9454e5204f42fefeae24ee7799093f36219efa3",
     "tree-sitter-python",
-    "tree-sitter-bash",
+    "tree-sitter-bash==0.25.0",
 ]
 license = "MIT"
 license-files = ["LICENSE"]
@@ -23,4 +23,4 @@ license-files = ["LICENSE"]
 perg = "perg.perg:main"
 
 [tool.setuptools.packages.find]
-where = ["perg"]
+where = ["."]

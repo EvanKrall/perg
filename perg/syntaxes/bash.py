@@ -53,8 +53,14 @@ def regexes_from_node(node, filename):
     For example, the bash string "foo $a baz" would yield ['foo ', WILDCARD, ' baz'].
     """
     if node.type in ('word', 'raw_string', 'extglob_pattern', 'ansi_c_string'):
-        value, = shlex.split(node.text.decode())
-        return [value]
+        try:
+            value, = shlex.split(node.text.decode())
+        except ValueError:
+            raise PergSyntaxParseError(
+                f"Could not parse word: {node.text.decode()!r} in {filename}"
+            )
+        else:
+            return [value]
     elif node.type == "heredoc_content" or (node.type == "heredoc_body" and not node.children):
         # a heredoc_body with no children is when the terminator is quoted, e.g. <<'EOF'
         # in this case, we treat it similarly to heredoc_content.
@@ -62,7 +68,7 @@ def regexes_from_node(node, filename):
     elif node.type in ("expansion", "simple_expansion", "command_substitution"):
         return [WILDCARD]
     elif node.type == "string_content":
-        value, = shlex.split('"' + node.text.decode() + '"')
+        value, = (shlex.split('"' + node.text.decode() + '"') or [''])
         return [value]
     elif node.type in ("string", "heredoc_body", "concatenation"):
         regex_parts_unescaped = []
@@ -73,8 +79,7 @@ def regexes_from_node(node, filename):
     elif node.type in ('"',):
         return []
     else:
-        breakpoint()
-        raise ValueError(f"Unknown node type: {node.type}")
+        raise PergSyntaxParseError(f"Unknown node type: {node.type}")
 
 
 def parse_node(node, filename):
